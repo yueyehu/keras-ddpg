@@ -109,8 +109,8 @@ class ActorCritic:
     #                               Model Training                              #
     # ========================================================================= #
 
-    def remember(self, cur_state, action, reward, new_state, done):
-        self.memory.append([cur_state, action, reward, new_state, done])
+    def remember(self, cur_state, action, reward, next_state, done):
+        self.memory.append([cur_state, action, reward, next_state, done])
 
     def _train_actor(self, samples):
 
@@ -187,30 +187,28 @@ def main():
     actor_critic = ActorCritic(env, sess)
 
     num_trials = 10000
-    trial_len = 200
 
     for i in range(num_trials):
-        print("trial:" + str(i))
         cur_state = env.reset()
-        for j in range(trial_len):
+        done = False
+        rewards = 0
+        while not done:
             env.render()
             cur_state = cur_state.reshape((1, env.observation_space.shape[0]))
+
             action = actor_critic.act(cur_state)
             action = action.reshape((1, env.action_space.shape[0]))
 
-            new_state, reward, done, _ = env.step(action)
-            if j == (trial_len - 1):
-                done = True
-                print(reward)
+            next_state, reward, done, _ = env.step(action)
+            actor_critic.train()
+            actor_critic.update_target()
 
-            if j % 5 == 0:
-                actor_critic.train()
-                actor_critic.update_target()
+            next_state = next_state.reshape((1, env.observation_space.shape[0]))
+            actor_critic.remember(cur_state, action, reward, next_state, done)
 
-            new_state = new_state.reshape((1, env.observation_space.shape[0]))
-
-            actor_critic.remember(cur_state, action, reward, new_state, done)
-            cur_state = new_state
+            cur_state = next_state
+            rewards += reward
+        print("episodes:", i, " rewards:", rewards, " final_reward:", reward)
 
 
 if __name__ == "__main__":
